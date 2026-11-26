@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Branch protection on main requires this job by name: "lint-and-test".
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dip
+          POSTGRES_PASSWORD: dip
+          POSTGRES_DB: dip_dashboard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dip"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://dip:dip@localhost:5432/dip_dashboard
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install server
+        working-directory: server
+        run: npm ci
+
+      - name: Install client
+        working-directory: client
+        run: npm ci
+
+      - name: Lint server
+        working-directory: server
+        run: npm run lint
+
+      - name: Lint client
+        working-directory: client
+        run: npm run lint
+
+      - name: Test server
+        working-directory: server
+        run: npm test
+
+      - name: Test client
+        working-directory: client
+        run: npm test
+
+      - name: Migrations and seed apply cleanly (twice, to prove they are re-runnable)
+        working-directory: server
+        run: npm run db:setup && npm run db:setup
+
+      - name: Build client
+        working-directory: client
+        run: npm run build

@@ -10,7 +10,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "lint": "eslint .",
-    "test": "node --test \"test/**/*.test.js\"",
+    "test": "node --test",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "db:setup": "npm run migrate && npm run seed"
